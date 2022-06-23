@@ -9,6 +9,7 @@
   "author": "Ngoc Truong",
   "license": "ISC",
   "dependencies": {
+    "dotenv": "^16.0.1",
     "puppeteer": "^15.0.0"
   }
 }
