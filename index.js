@@ -33,28 +33,61 @@ const groupLink = "https://www.facebook.com/groups/296668743081/events";
   await page.goto(groupLink, { waitUntil: "networkidle2" });
 
   // Click on "show more"-button, but only in the first container (does not work yet, clicks on all "show more"-buttons)
-  for (let i = 0; i < 5; i++) {
-    await page.waitForTimeout(3000);
-    await page.waitForSelector(showMoreButton);
-    await page.click(showMoreButton).catch(() => {});
-  }
+  // for (let i = 0; i < 5; i++) {
+  //   await page.waitForTimeout(3000);
+  //   await page.waitForSelector(showMoreButton);
+  //   await page.click(showMoreButton).catch(() => {});
+  // }
 
-  // Fetch all event nodes on this page
-  await page.waitForTimeout(3000);
+  // await page.waitForTimeout(3000);
 
-  const dateAndName = await page.evaluate(() => {
-    const nodes = [
-      ...document.getElementsByClassName("j83agx80 cbu4d94t mysgfdmx hddg9phg"),
-    ];
-    return nodes.map((node) => {
-      return {
-        date: node.children[0].innerText,
-        name: node.children[1].innerText,
-      };
-    });
+  // Fetch links
+  const links = await page.evaluate(() => {
+    return [
+      ...document.querySelectorAll(
+        ".a8c37x1j.ni8dbmo4.stjgntxs.l9j0dhe7.ltmttdrg.g0qnabr5 a"
+      ),
+    ].map((link) => link.href);
   });
 
-  await console.log(dateAndName);
+  //await console.log(links);
+
+  // Open all links in new tab
+  const pages = [];
+  const eventInfos = [];
+
+  for (let i = 0; i < links.length; i++) {
+    pages[i] = await browser.newPage();
+    await pages[i].goto(links[i]);
+
+    let infos = await pages[i].evaluate(() => {
+      return [
+        ...document.querySelectorAll(
+          ".j83agx80.cbu4d94t.obtkqiv7.sv5sfqaa .bi6gxh9e.aov4n071"
+        ),
+      ].map((info) => info.innerText);
+    });
+
+    await eventInfos.push(infos);
+  }
+
+  await console.log(eventInfos);
+
+  // // Fetch all event nodes on this page
+
+  // const dateAndName = await page.evaluate(() => {
+  //   const nodes = [
+  //     ...document.getElementsByClassName("j83agx80 cbu4d94t mysgfdmx hddg9phg"),
+  //   ];
+  //   return nodes.map((node) => {
+  //     return {
+  //       date: node.children[0].innerText,
+  //       name: node.children[1].innerText,
+  //     };
+  //   });
+  // });
+
+  // await console.log(dateAndName);
 
   // const dateAndName = await nodes.map((node) => {
   //   return {
@@ -78,24 +111,15 @@ const groupLink = "https://www.facebook.com/groups/296668743081/events";
 })();
 
 // Helper functions
-const isButtonVisible = async (page, cssSelector) => {
-  let visible = true;
-  await page
-    .waitForSelector(cssSelector, { visible: true, timeout: 2000 })
-    .catch(() => {
-      visible = false;
-    });
-  return visible;
-};
+// const isButtonVisible = async (page, cssSelector) => {
+//   let visible = true;
+//   await page
+//     .waitForSelector(cssSelector, { visible: true, timeout: 2000 })
+//     .catch(() => {
+//       visible = false;
+//     });
+//   return visible;
+// };
 
-// let nodes = [
-//   ...document.getElementsByClassName("j83agx80 cbu4d94t mysgfdmx hddg9phg"),
-// ];
-
-// let dateAndName = nodes.map((node) => {
-//   return { date: node.children[0].innerText, name: node.children[1].innerText };
-// });
-
-// nodes.map((node) => {
-//   console.log(node.children[0].innerText, node.children[1].innerText);
-// });
+//a8c37x1j ni8dbmo4 stjgntxs l9j0dhe7 ltmttdrg g0qnabr5
+//s9t1a10h n851cfcs j83agx80 bp9cbjyn
