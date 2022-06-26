@@ -7,8 +7,7 @@ const emailInput = '[name="email"]';
 const passwordInput = '[name="pass"]';
 const loginButton = '[name="login"]';
 const showMoreButton = '[aria-label="Mehr anzeigen"]';
-const containers = "dati1w0a ihqw7lf3 hv4rvrfc discj3wi";
-const detailPageLink = ".r4lidvzm";
+
 // Groups
 const groupLink = "https://www.facebook.com/groups/296668743081/events";
 
@@ -41,7 +40,30 @@ const groupLink = "https://www.facebook.com/groups/296668743081/events";
   }
 
   // Fetch all event nodes on this page
+  await page.waitForTimeout(3000);
 
+  const dateAndName = await page.evaluate(() => {
+    const nodes = [
+      ...document.getElementsByClassName("j83agx80 cbu4d94t mysgfdmx hddg9phg"),
+    ];
+    return nodes.map((node) => {
+      return {
+        date: node.children[0].innerText,
+        name: node.children[1].innerText,
+      };
+    });
+  });
+
+  await console.log(dateAndName);
+
+  // const dateAndName = await nodes.map((node) => {
+  //   return {
+  //     date: node.children[0].innerText,
+  //     name: node.children[1].innerText,
+  //   };
+  // });
+
+  // await console.log(dateAndName);
   // await page.click(detailPageLink);
 
   // let loadMoreVisible = await isButtonVisible(page, showMoreButton);
