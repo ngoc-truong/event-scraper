@@ -1,5 +1,7 @@
+"use strict";
 require("dotenv").config();
 const puppeteer = require("puppeteer");
+const fs = require("fs");
 
 // Selectors
 const cookieButton = '[data-cookiebanner="accept_only_essential_button"]';
@@ -7,18 +9,29 @@ const emailInput = '[name="email"]';
 const passwordInput = '[name="pass"]';
 const loginButton = '[name="login"]';
 const showMoreButton = '[aria-label="Mehr anzeigen"]';
+const infoBoxSelector =
+  ".j83agx80.cbu4d94t.obtkqiv7.sv5sfqaa .bi6gxh9e.aov4n071";
+const descriptionSelector = ".p75sslyk";
+const loadMoreSelector =
+  '.cxmmr5t8.oygrvhab.hcukyx3x.c1et5uql.o9v6fnle div[role="button"]';
 
-// Groups
+// Groups and links
+const facebook = "https://www.facebook.com";
 const groupLink = "https://www.facebook.com/groups/296668743081/events";
+
+// Event infos global variable
+const eventInfos = [];
 
 // Puppeteer
 (async () => {
   const browser = await puppeteer.launch({ headless: false });
-
   const page = await browser.newPage();
 
   // Login
-  await page.goto("https://www.facebook.com", { waitUntil: "networkidle2" });
+  await page.goto(facebook, { waitUntil: "networkidle2" });
+  const context = await browser.defaultBrowserContext();
+  await context.overridePermissions(facebook, ["notifications"]);
+
   await page.waitForSelector(cookieButton);
   await page.click(cookieButton);
   await page.waitForSelector(emailInput);
@@ -26,100 +39,119 @@ const groupLink = "https://www.facebook.com/groups/296668743081/events";
   await page.waitForSelector(loginButton);
   await page.type(emailInput, process.env.EMAIL, { delay: 10 });
   await page.type(passwordInput, process.env.PASS, { delay: 10 });
-
   await page.click(loginButton);
   await page.waitForNavigation();
-
   await page.goto(groupLink, { waitUntil: "networkidle2" });
 
   // Click on "show more"-button, but only in the first container (does not work yet, clicks on all "show more"-buttons)
   // for (let i = 0; i < 5; i++) {
-  //   await page.waitForTimeout(3000);
+  //   await page.waitForTimeout(2000);
   //   await page.waitForSelector(showMoreButton);
   //   await page.click(showMoreButton).catch(() => {});
   // }
 
-  // await page.waitForTimeout(3000);
+  await page.waitForTimeout(2000);
 
-  // Fetch links
+  // Fetch links -> Refactor to make linkSelector global
   const links = await page.evaluate(() => {
-    return [
-      ...document.querySelectorAll(
-        ".a8c37x1j.ni8dbmo4.stjgntxs.l9j0dhe7.ltmttdrg.g0qnabr5 a"
-      ),
-    ].map((link) => link.href);
-  });
+    const linkSelector =
+      ".a8c37x1j.ni8dbmo4.stjgntxs.l9j0dhe7.ltmttdrg.g0qnabr5 a";
 
-  //await console.log(links);
+    return [...document.querySelectorAll(linkSelector)].map(
+      (link) => link.href
+    );
+  });
 
   // Open all links in new tab
   const pages = [];
-  const eventInfos = [];
 
   for (let i = 0; i < links.length; i++) {
     pages[i] = await browser.newPage();
     await pages[i].goto(links[i]);
+    await pages[i].waitForSelector(infoBoxSelector);
+    await pages[i].waitForSelector(descriptionSelector);
+    if ((await pages[i].$(loadMoreSelector)) !== null) {
+      await pages[i].waitForTimeout(2000);
+      await pages[i].click(loadMoreSelector);
+    }
 
-    let infos = await pages[i].evaluate(() => {
-      return [
-        ...document.querySelectorAll(
-          ".j83agx80.cbu4d94t.obtkqiv7.sv5sfqaa .bi6gxh9e.aov4n071"
-        ),
-      ].map((info) => info.innerText);
+    let infos = await pages[i].evaluate(async () => {
+      // Format Date -> Refactor to make it global
+      const formatDate = (myString) => {
+        myString = myString.toString();
+        const data = {};
+
+        // "16. SEPT. UM 12:00 – 18. SEPT. UM 22:00"
+        if (myString.includes("–")) {
+          data.day = null;
+          data.startDate = myString.substring(0, myString.indexOf("UM")).trim();
+          data.startTime = myString
+            .substring(myString.indexOf("UM") + 2, myString.indexOf("–"))
+            .trim();
+          let pos1 = myString.indexOf("UM");
+          let pos2 = myString.indexOf("UM", pos1 + 2);
+          data.endDate = myString.substring(myString.indexOf("–"), pos2).trim();
+          data.endTime = myString.substring(pos2 + 2).trim();
+        } // "MONTAG, 20. JUNI 2022 UM 19:00"
+        else if (myString.includes("UM")) {
+          data.day = myString.substring(0, myString.indexOf(","));
+          data.startDate = myString
+            .substring(myString.indexOf(",") + 1, myString.indexOf("UM"))
+            .trim();
+          data.startTime = myString
+            .substring(myString.indexOf("UM") + 2)
+            .trim();
+          data.endDate = myString
+            .substring(myString.indexOf(",") + 1, myString.indexOf("UM"))
+            .trim();
+          data.endTime = null;
+        } // "SONNTAG, 19. JUNI 2022 VON 13:00 BIS 15:00"
+        else {
+          data.day = myString.substring(0, myString.indexOf(","));
+          data.startDate = myString
+            .substring(myString.indexOf(",") + 1, myString.indexOf("VON"))
+            .trim();
+          data.startTime = myString
+            .substring(myString.indexOf("VON") + 3, myString.indexOf("BIS"))
+            .trim();
+          data.endDate = myString
+            .substring(myString.indexOf(",") + 1, myString.indexOf("VON"))
+            .trim();
+          data.endTime = myString.substring(myString.indexOf("BIS") + 3).trim();
+        }
+
+        return data;
+      };
+
+      // Selectors
+      const infoBoxSelector = ".j83agx80.cbu4d94t.obtkqiv7.sv5sfqaa";
+      const descriptionSelector = ".p75sslyk span";
+
+      // Get all infos
+      const nodesInfo = [...document.querySelectorAll(infoBoxSelector)];
+
+      let infoObject = {};
+      const formattedDate = formatDate(nodesInfo[0].children[0].innerText);
+
+      infoObject.day = formattedDate.day;
+      infoObject.startDate = formattedDate.startDate;
+      infoObject.startTime = formattedDate.startTime;
+      infoObject.endDate = formattedDate.endDate;
+      infoObject.endTime = formattedDate.endTime;
+      infoObject.title = nodesInfo[0].children[1].innerText;
+      infoObject.location = nodesInfo[0].children[2].innerText;
+      infoObject.description =
+        document.querySelector(descriptionSelector).innerText;
+
+      return infoObject;
     });
 
     await eventInfos.push(infos);
   }
 
-  await console.log(eventInfos);
+  // Create a json file
+  let data = await JSON.stringify(eventInfos);
+  await fs.writeFileSync("lindy-events.json", data);
 
-  // // Fetch all event nodes on this page
-
-  // const dateAndName = await page.evaluate(() => {
-  //   const nodes = [
-  //     ...document.getElementsByClassName("j83agx80 cbu4d94t mysgfdmx hddg9phg"),
-  //   ];
-  //   return nodes.map((node) => {
-  //     return {
-  //       date: node.children[0].innerText,
-  //       name: node.children[1].innerText,
-  //     };
-  //   });
-  // });
-
-  // await console.log(dateAndName);
-
-  // const dateAndName = await nodes.map((node) => {
-  //   return {
-  //     date: node.children[0].innerText,
-  //     name: node.children[1].innerText,
-  //   };
-  // });
-
-  // await console.log(dateAndName);
-  // await page.click(detailPageLink);
-
-  // let loadMoreVisible = await isButtonVisible(page, showMoreButton);
-
-  // while (loadMoreVisible) {
-  //   await page.click(showMoreButton).catch(() => {});
-  //   loadMoreVisible = await isButtonVisible(page, showMoreButton);
-  // }
-
-  // await page.waitForTimeout(5000);
-  // await browser.close();
+  await browser.close();
 })();
-
-// Helper functions
-// const isButtonVisible = async (page, cssSelector) => {
-//   let visible = true;
-//   await page
-//     .waitForSelector(cssSelector, { visible: true, timeout: 2000 })
-//     .catch(() => {
-//       visible = false;
-//     });
-//   return visible;
-// };
-
-//a8c37x1j ni8dbmo4 stjgntxs l9j0dhe7 ltmttdrg g0qnabr5
-//s9t1a10h n851cfcs j83agx80 bp9cbjyn
