@@ -7,7 +7,8 @@ const emailInput = '[name="email"]';
 const passwordInput = '[name="pass"]';
 const loginButton = '[name="login"]';
 const showMoreButton = '[aria-label="Mehr anzeigen"]';
-
+const containers = "dati1w0a ihqw7lf3 hv4rvrfc discj3wi";
+const detailPageLink = ".r4lidvzm";
 // Groups
 const groupLink = "https://www.facebook.com/groups/296668743081/events";
 
@@ -24,29 +25,34 @@ const groupLink = "https://www.facebook.com/groups/296668743081/events";
   await page.waitForSelector(emailInput);
   await page.waitForSelector(passwordInput);
   await page.waitForSelector(loginButton);
-  await page.type(emailInput, process.env.EMAIL, { delay: 120 });
-  await page.type(passwordInput, process.env.PASS, { delay: 120 });
-  await page.click(loginButton);
-  await page.waitForTimeout(2000);
+  await page.type(emailInput, process.env.EMAIL, { delay: 10 });
+  await page.type(passwordInput, process.env.PASS, { delay: 10 });
 
-  // Click load more button as long as possible
+  await page.click(loginButton);
+  await page.waitForNavigation();
+
   await page.goto(groupLink, { waitUntil: "networkidle2" });
 
-  // let loadMoreVisible = await isButtonVisible(page, showMoreButton);
-
+  // Click on "show more"-button, but only in the first container (does not work yet, clicks on all "show more"-buttons)
   for (let i = 0; i < 5; i++) {
+    await page.waitForTimeout(3000);
     await page.waitForSelector(showMoreButton);
     await page.click(showMoreButton).catch(() => {});
-    await console.log(`Das ist das ${i}. Mal jetze.`);
   }
+
+  // Fetch all event nodes on this page
+
+  // await page.click(detailPageLink);
+
+  // let loadMoreVisible = await isButtonVisible(page, showMoreButton);
 
   // while (loadMoreVisible) {
   //   await page.click(showMoreButton).catch(() => {});
   //   loadMoreVisible = await isButtonVisible(page, showMoreButton);
   // }
 
-  await page.waitForTimeout(5000);
-  await browser.close();
+  // await page.waitForTimeout(5000);
+  // await browser.close();
 })();
 
 // Helper functions
@@ -59,3 +65,15 @@ const isButtonVisible = async (page, cssSelector) => {
     });
   return visible;
 };
+
+// let nodes = [
+//   ...document.getElementsByClassName("j83agx80 cbu4d94t mysgfdmx hddg9phg"),
+// ];
+
+// let dateAndName = nodes.map((node) => {
+//   return { date: node.children[0].innerText, name: node.children[1].innerText };
+// });
+
+// nodes.map((node) => {
+//   console.log(node.children[0].innerText, node.children[1].innerText);
+// });
