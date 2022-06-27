@@ -17,7 +17,7 @@ const loadMoreSelector =
 
 // Groups and links
 const facebook = "https://www.facebook.com";
-const groupLink = "https://www.facebook.com/groups/296668743081/events";
+const eventsPage = "https://www.facebook.com/groups/296668743081/events";
 
 // Event infos global variable
 const eventInfos = [];
@@ -41,23 +41,39 @@ const eventInfos = [];
   await page.type(passwordInput, process.env.PASS, { delay: 10 });
   await page.click(loginButton);
   await page.waitForNavigation();
-  await page.goto(groupLink, { waitUntil: "networkidle2" });
+  await page.goto(eventsPage, { waitUntil: "networkidle2" });
 
-  // Click on "show more"-button, but only in the first container (does not work yet, clicks on all "show more"-buttons)
-  // for (let i = 0; i < 5; i++) {
-  //   await page.waitForTimeout(2000);
-  //   await page.waitForSelector(showMoreButton);
-  //   await page.click(showMoreButton).catch(() => {});
-  // }
+  // Click on "show more"-button, but only in the future events container
+  const showMoreButtonExists = async () => {
+    let itExists = await page.evaluate(async () => {
+      const firstContainer =
+        ".q6o897ci.d2edcug0.sej5wr8e.jei6r52m.o8rfisnq .j83agx80.l9j0dhe7.k4urcfbm:nth-child(1)";
+      const showMoreSelector = '[aria-label="Mehr anzeigen"]';
+
+      const futureEvents = await document.querySelector(firstContainer);
+
+      return futureEvents.contains(document.querySelector(showMoreSelector));
+    });
+    return itExists;
+  };
+
+  while (await showMoreButtonExists()) {
+    await page.waitForTimeout(2000);
+    await page.waitForSelector(showMoreButton);
+    await page.click(showMoreButton).catch(() => {});
+  }
 
   await page.waitForTimeout(2000);
 
-  // Fetch links -> Refactor to make linkSelector global
+  // Fetch links from future events only
   const links = await page.evaluate(() => {
     const linkSelector =
       ".a8c37x1j.ni8dbmo4.stjgntxs.l9j0dhe7.ltmttdrg.g0qnabr5 a";
+    const futureEvents = document.querySelector(
+      ".q6o897ci.d2edcug0.sej5wr8e.jei6r52m.o8rfisnq .j83agx80.l9j0dhe7.k4urcfbm:nth-child(1)"
+    );
 
-    return [...document.querySelectorAll(linkSelector)].map(
+    return [...futureEvents.querySelectorAll(linkSelector)].map(
       (link) => link.href
     );
   });
@@ -128,7 +144,7 @@ const eventInfos = [];
       const descriptionSelector = ".p75sslyk span";
 
       // Get all infos
-      const nodesInfo = [...document.querySelectorAll(infoBoxSelector)];
+      const nodesInfo = await [...document.querySelectorAll(infoBoxSelector)];
 
       let infoObject = {};
       const formattedDate = formatDate(nodesInfo[0].children[0].innerText);
@@ -142,6 +158,7 @@ const eventInfos = [];
       infoObject.location = nodesInfo[0].children[2].innerText;
       infoObject.description =
         document.querySelector(descriptionSelector).innerText;
+      infoObject.scrapingDate = new Date().toLocaleString();
 
       return infoObject;
     });
