@@ -2,6 +2,7 @@
 require("dotenv").config();
 const puppeteer = require("puppeteer");
 const fs = require("fs");
+const readline = require("readline");
 
 // Selectors
 const cookieButton = '[data-cookiebanner="accept_only_essential_button"]';
@@ -17,13 +18,36 @@ const loadMoreSelector =
 
 // Groups and links
 const facebook = "https://www.facebook.com";
-const eventsPage = "https://www.facebook.com/groups/296668743081/events";
 
-// Event infos global variable
-const eventInfos = [];
+// Event infos
+const eventPages = [];
+let eventInfos = [];
+
+if (fs.existsSync("lindy-events.json")) {
+  const rawData = fs.readFileSync("lindy-events.json");
+  eventInfos = JSON.parse(rawData);
+}
+
+const askForEventsPage = (question) => {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) =>
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer);
+    })
+  );
+};
 
 // Puppeteer
 (async () => {
+  const eventsPage = await askForEventsPage(
+    "\nHello fellow dancer! \n\nGreat to have you here <3.\nPlease enter an events page of a facebook group! \n\nIt looks like something like this: 'https://www.facebook.com/groups/296668743081/events'! \n"
+  );
+
   const browser = await puppeteer.launch({ headless: false });
   const page = await browser.newPage();
 
@@ -41,9 +65,9 @@ const eventInfos = [];
   await page.type(passwordInput, process.env.PASS, { delay: 10 });
   await page.click(loginButton);
   await page.waitForNavigation();
-  await page.goto(eventsPage, { waitUntil: "networkidle2" });
+  await page.goto(eventsPage, { waitUntil: "networkidle2" }); // What if user enters wrong address?
 
-  // Click on "show more"-button, but only in the future events container
+  // Click on "show more"-button, but only in the "future events"-container
   const showMoreButtonExists = async () => {
     let itExists = await page.evaluate(async () => {
       const firstContainer =
@@ -106,7 +130,9 @@ const eventInfos = [];
             .trim();
           let pos1 = myString.indexOf("UM");
           let pos2 = myString.indexOf("UM", pos1 + 2);
-          data.endDate = myString.substring(myString.indexOf("–"), pos2).trim();
+          data.endDate = myString
+            .substring(myString.indexOf("–") + 1, pos2)
+            .trim();
           data.endTime = myString.substring(pos2 + 2).trim();
         } // "MONTAG, 20. JUNI 2022 UM 19:00"
         else if (myString.includes("UM")) {
@@ -166,8 +192,20 @@ const eventInfos = [];
     await eventInfos.push(infos);
   }
 
+  // Filter out duplicates
+  eventInfos = await eventInfos.filter(
+    (value, index, self) =>
+      index ===
+      self.findIndex(
+        (t) =>
+          t.startDate === value.startDate &&
+          t.startTime === value.startTime &&
+          t.title === value.title
+      )
+  );
+
   // Create a json file
-  let data = await JSON.stringify(eventInfos);
+  let data = await JSON.stringify(eventInfos, null, 2);
   await fs.writeFileSync("lindy-events.json", data);
 
   await browser.close();
