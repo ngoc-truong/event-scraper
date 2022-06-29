@@ -42,7 +42,87 @@ const askForEventsPage = (question) => {
   );
 };
 
-// Puppeteer
+// Helper functions to format date
+const toISODate = (date) => {
+  date = date.toString().toUpperCase();
+  let regEx = /^\d{4}-\d{2}-\d{2}$/;
+
+  if (
+    date.includes("HEUTE") ||
+    date.includes("MORGEN") ||
+    date.includes("ÜBERMORGEN") ||
+    date.includes("MONTAG") ||
+    date.includes("DIENSTAG") ||
+    date.includes("MITTWOCH") ||
+    date.includes("DONNERSTAG") ||
+    date.includes("FREITAG") ||
+    date.includes("SAMSTAG") ||
+    date.includes("SONNTAG") ||
+    date.match(regEx)
+  ) {
+    return date;
+  } else {
+    return formatYear(date) + formatMonth(date) + formatDay(date);
+  }
+};
+
+const formatYear = (date) => {
+  let currentYear = new Date().getFullYear().toString();
+  let formattedDate = "";
+
+  if (!date.includes(currentYear)) {
+    formattedDate = formattedDate + currentYear + "-";
+  } else {
+    formattedDate = formattedDate + date.substring(date.length - 4) + "-";
+  }
+  return formattedDate;
+};
+
+const formatMonth = (date) => {
+  date = date.toUpperCase();
+  let formattedDate = "";
+
+  if (date.includes("JAN")) {
+    formattedDate = formattedDate + "01-";
+  } else if (date.includes("FEB")) {
+    formattedDate = formattedDate + "02-";
+  } else if (date.includes("MÄR")) {
+    formattedDate = formattedDate + "03-";
+  } else if (date.includes("APR")) {
+    formattedDate = formattedDate + "04-";
+  } else if (date.includes("MAI")) {
+    formattedDate = formattedDate + "05-";
+  } else if (date.includes("JUN")) {
+    formattedDate = formattedDate + "06-";
+  } else if (date.includes("JUL")) {
+    formattedDate = formattedDate + "07-";
+  } else if (date.includes("AUG")) {
+    formattedDate = formattedDate + "08-";
+  } else if (date.includes("SEP")) {
+    formattedDate = formattedDate + "09-";
+  } else if (date.includes("OKT")) {
+    formattedDate = formattedDate + "10-";
+  } else if (date.includes("NOV")) {
+    formattedDate = formattedDate + "11-";
+  } else if (date.includes("DEZ")) {
+    formattedDate = formattedDate + "12-";
+  }
+
+  return formattedDate;
+};
+
+const formatDay = (date) => {
+  let day = date.substring(0, date.indexOf("."));
+
+  if (day.length === 1) {
+    return "0" + day;
+  } else {
+    return day;
+  }
+};
+
+/*** Puppeteer ***/
+
 (async () => {
   const eventsPage = await askForEventsPage(
     "\nHello fellow dancer! \n\nGreat to have you here <3.\nPlease enter an events page of a facebook group! \n\nIt looks like something like this: 'https://www.facebook.com/groups/296668743081/events'! \n"
@@ -184,13 +264,23 @@ const askForEventsPage = (question) => {
       infoObject.location = nodesInfo[0].children[2].innerText;
       infoObject.description =
         document.querySelector(descriptionSelector).innerText;
-      infoObject.scrapingDate = new Date().toLocaleString();
+      infoObject.scrapingDate = new Date().toISOString().split("T")[0];
+      infoObject.scrapingDay = new Date().getDay();
 
       return infoObject;
     });
 
     await eventInfos.push(infos);
   }
+
+  // Change format of date to ISO Date
+  eventInfos = await eventInfos.map((event) => {
+    return {
+      ...event,
+      startDate: toISODate(event.startDate),
+      endDate: toISODate(event.endDate),
+    };
+  });
 
   // Filter out duplicates
   eventInfos = await eventInfos.filter(
