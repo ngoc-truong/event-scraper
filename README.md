@@ -1,6 +1,6 @@
 # Event Scraper
 
-In this project I've built an web scraper which scrapes events from my social media groups.
+In this project I've built a web scraper which crawls events from my social media groups.
 
 ## Problem Statement
 
@@ -10,6 +10,8 @@ This bot scrapes all events from all my personal subscribed groups.
 
 ## Challenges
 
-There were two div containers with future events and past events. Both of those containers have the same classes and within those containers there is a "load more"-button.
-
-The biggest challenge was to scrape only future events. The bot should click the "load more"-button as long as it is still visible in the "future events"-container. However, since the "past events"-container is structurally identical, it was difficult to target the correct button. In addition there was the puppeteer syntax and vanilla javascript functions like ".querySelector" were only allowed within the .evaluate() function of puppeteer.
+- The bot should only scrape data from one div (if there are two or more with the same classes).
+- The bot should click on a "load-more"-button until it disappears.
+- Format dates with a lot of edge cases e.g. "Heute um 20:00 Uhr", "Samstag um 19:00 Uhr"
+- Translate dates into ISO format since then I can "calculate" with dates.
+- Mixing the puppeteer syntax with vanilla javascript syntax (e.g. functions like .contains() or .querySelector() were only available within the .evaluate() function of puppeteer).

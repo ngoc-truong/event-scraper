@@ -20,7 +20,6 @@ const loadMoreSelector =
 const facebook = "https://www.facebook.com";
 
 // Event infos
-const eventPages = [];
 let eventInfos = [];
 
 if (fs.existsSync("lindy-events.json")) {
@@ -47,6 +46,7 @@ const toISODate = (date) => {
   date = date.toString().toUpperCase();
   let regEx = /^\d{4}-\d{2}-\d{2}$/;
 
+  // Change here
   if (
     date.includes("HEUTE") ||
     date.includes("MORGEN") ||
@@ -119,6 +119,25 @@ const formatDay = (date) => {
   } else {
     return day;
   }
+};
+
+const howManyDaysBetween = (start, end) => {
+  const weekdays = [
+    "SONNTAG",
+    "MONTAG",
+    "DIENSTAG",
+    "MITTWOCH",
+    "DONNERSTAG",
+    "FREITAG",
+    "SAMSTAG",
+  ];
+  let howManyDays = 0;
+
+  for (let i = start; i !== weekdays.indexOf(end); i++) {
+    i = i % weekdays.length;
+    howManyDays++;
+  }
+  return howManyDays;
 };
 
 /*** Puppeteer ***/
@@ -255,6 +274,7 @@ const formatDay = (date) => {
       let infoObject = {};
       const formattedDate = formatDate(nodesInfo[0].children[0].innerText);
 
+      infoObject.originalDateString = nodesInfo[0].children[0].innerText;
       infoObject.day = formattedDate.day;
       infoObject.startDate = formattedDate.startDate;
       infoObject.startTime = formattedDate.startTime;
@@ -272,14 +292,57 @@ const formatDay = (date) => {
 
     await eventInfos.push(infos);
   }
+  await console.log(eventInfos);
 
-  // Change format of date to ISO Date
+  // Change format of date to ISO date
   eventInfos = await eventInfos.map((event) => {
     return {
       ...event,
       startDate: toISODate(event.startDate),
       endDate: toISODate(event.endDate),
     };
+  });
+
+  // Edge case: Change format of weekdays (e.g. "HEUTE") to ISO date
+  eventInfos = await eventInfos.map((event) => {
+    const weekdaysStrings = [
+      "SONNTAG",
+      "MONTAG",
+      "DIENSTAG",
+      "MITTWOCH",
+      "DONNERSTAG",
+      "FREITAG",
+      "SAMSTAG",
+    ];
+
+    if (event.startDate === "HEUTE") {
+      return {
+        ...event,
+        startDate: event.scrapingDate,
+        endDate: event.scrapingDate,
+      };
+    } else if (event.startDate === "MORGEN") {
+      let scrapingDate = new Date(event.scrapingDate);
+      let tomorrow = new Date(scrapingDate.setDate(scrapingDate.getDate() + 1));
+      return {
+        ...event,
+        startDate: tomorrow.toISOString().split("T")[0],
+        endDate: tomorrow.toISOString().split("T")[0],
+      };
+    } else if (weekdaysStrings.includes(event.startDate)) {
+      let howManyDays = howManyDaysBetween(event.scrapingDay, event.startDate);
+      let scrapingDate = new Date(event.scrapingDate);
+      let targetDate = new Date(
+        scrapingDate.setDate(scrapingDate.getDate() + howManyDays)
+      );
+      return {
+        ...event,
+        startDate: targetDate.toISOString().split("T")[0],
+        endDate: targetDate.toISOString().split("T")[0],
+      };
+    } else {
+      return event;
+    }
   });
 
   // Filter out duplicates
