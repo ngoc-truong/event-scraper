@@ -363,4 +363,5 @@ const howManyDaysBetween = (start, end) => {
   await fs.writeFileSync("lindy-events.json", data);
 
   await browser.close();
+  await console.log("Jupiehhhh, finished! Have fun dancing!");
 })();
