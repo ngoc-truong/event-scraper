@@ -15,3 +15,4 @@ This bot scrapes all events from all my personal subscribed groups.
 - Format dates with a lot of edge cases e.g. "Heute um 20:00 Uhr", "Samstag um 19:00 Uhr"
 - Translate dates into ISO format since then I can "calculate" with dates.
 - Mixing the puppeteer syntax with vanilla javascript syntax (e.g. functions like .contains() or .querySelector() were only available within the .evaluate() function of puppeteer).
+- The bot should remove duplicates.

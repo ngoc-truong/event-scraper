@@ -3,6 +3,7 @@ require("dotenv").config();
 const puppeteer = require("puppeteer");
 const fs = require("fs");
 const readline = require("readline");
+const crypto = require("crypto");
 
 // Selectors
 const cookieButton = '[data-cookiebanner="accept_only_essential_button"]';
@@ -144,7 +145,7 @@ const howManyDaysBetween = (start, end) => {
 
 (async () => {
   const eventsPage = await askForEventsPage(
-    "\nHello fellow dancer! \n\nGreat to have you here <3.\nPlease enter an events page of a facebook group! \n\nIt looks like something like this: 'https://www.facebook.com/groups/296668743081/events'! \n"
+    "\nHello fellow dancer! \n\nGreat to have you here <3.\nPlease enter an events' page of a facebook group! \n\nIt looks something like this: 'https://www.facebook.com/groups/296668743081/events'! \n"
   );
 
   const browser = await puppeteer.launch({ headless: false });
@@ -274,6 +275,7 @@ const howManyDaysBetween = (start, end) => {
       let infoObject = {};
       const formattedDate = formatDate(nodesInfo[0].children[0].innerText);
 
+      infoObject.id = crypto.randomUUID();
       infoObject.originalDateString = nodesInfo[0].children[0].innerText;
       infoObject.day = formattedDate.day;
       infoObject.startDate = formattedDate.startDate;
@@ -292,7 +294,6 @@ const howManyDaysBetween = (start, end) => {
 
     await eventInfos.push(infos);
   }
-  await console.log(eventInfos);
 
   // Change format of date to ISO date
   eventInfos = await eventInfos.map((event) => {
