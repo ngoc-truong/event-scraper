@@ -142,11 +142,10 @@ const howManyDaysBetween = (start, end) => {
 };
 
 /*** Puppeteer ***/
-
-(async () => {
-  const eventsPage = await askForEventsPage(
-    "\nHello fellow dancer! \n\nGreat to have you here <3.\nPlease enter an events' page of a facebook group! \n\nIt looks something like this: 'https://www.facebook.com/groups/296668743081/events'! \n"
-  );
+const startPuppeteer = async (link) => {
+  // const eventsPage = await askForEventsPage(
+  //   "\nHello fellow dancer! \n\nGreat to have you here <3.\nPlease enter an events' page of a facebook group! \n\nIt looks something like this: 'https://www.facebook.com/groups/296668743081/events'! \n"
+  // );
 
   const browser = await puppeteer.launch({ headless: false });
   const page = await browser.newPage();
@@ -165,7 +164,7 @@ const howManyDaysBetween = (start, end) => {
   await page.type(passwordInput, process.env.PASS, { delay: 10 });
   await page.click(loginButton);
   await page.waitForNavigation();
-  await page.goto(eventsPage, { waitUntil: "networkidle2" }); // What if user enters wrong address?
+  await page.goto(link, { waitUntil: "networkidle2" }); // What if user enters wrong address?
 
   // Click on "show more"-button, but only in the "future events"-container
   const showMoreButtonExists = async () => {
@@ -363,5 +362,22 @@ const howManyDaysBetween = (start, end) => {
   await fs.writeFileSync("lindy-events.json", data);
 
   await browser.close();
-  await console.log("Jupiehhhh, finished! Have fun dancing!");
-})();
+  await console.log("");
+  await console.log("Jupiehhh, finished! Have fun dancing!");
+};
+
+// Event links
+const draussenTanzen = "https://www.facebook.com/groups/draussentanzen/events";
+const swingInHamburg = "https://www.facebook.com/groups/145871375478015/events";
+const swingHH = "https://www.facebook.com/groups/296668743081/events";
+const swingWerkstatt = "https://www.facebook.com/groups/124707970882776/events";
+
+// Refactor? But forEach-Loop does not await
+const startProgram = async () => {
+  await startPuppeteer(draussenTanzen);
+  await startPuppeteer(swingInHamburg);
+  await startPuppeteer(swingHH);
+  await startPuppeteer(swingWerkstatt);
+};
+
+startProgram();
