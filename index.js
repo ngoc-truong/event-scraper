@@ -21,7 +21,7 @@ const loadMoreSelector =
 const facebook = "https://www.facebook.com";
 
 // Event infos
-let eventInfos = [];
+let eventInfos = { events: [] };
 
 if (fs.existsSync("lindy-events.json")) {
   const rawData = fs.readFileSync("lindy-events.json");
@@ -291,11 +291,11 @@ const startPuppeteer = async (link) => {
       return infoObject;
     });
 
-    await eventInfos.push(infos);
+    await eventInfos.events.push(infos);
   }
 
   // Change format of date to ISO date
-  eventInfos = await eventInfos.map((event) => {
+  eventInfos.events = await eventInfos.events.map((event) => {
     return {
       ...event,
       startDate: toISODate(event.startDate),
@@ -304,7 +304,7 @@ const startPuppeteer = async (link) => {
   });
 
   // Edge case: Change format of weekdays (e.g. "HEUTE") to ISO date
-  eventInfos = await eventInfos.map((event) => {
+  eventInfos.events = await eventInfos.events.map((event) => {
     const weekdaysStrings = [
       "SONNTAG",
       "MONTAG",
@@ -346,7 +346,7 @@ const startPuppeteer = async (link) => {
   });
 
   // Filter out duplicates
-  eventInfos = await eventInfos.filter(
+  eventInfos.events = await eventInfos.events.filter(
     (value, index, self) =>
       index ===
       self.findIndex(
@@ -356,6 +356,9 @@ const startPuppeteer = async (link) => {
           t.title === value.title
       )
   );
+
+  // Bring to correct json-format for json-server
+  //eventInfos.events = await { events: [...eventInfos] };
 
   // Create a json file
   let data = await JSON.stringify(eventInfos, null, 2);
@@ -378,6 +381,14 @@ const startProgram = async () => {
   await startPuppeteer(swingInHamburg);
   await startPuppeteer(swingHH);
   await startPuppeteer(swingWerkstatt);
+  await fs.copyFile("lindy-events.json", "../calendar/db.json", (error) => {
+    if (error) {
+      throw error;
+    }
+    console.log(
+      '"lindy-events.json" was copied to this path: "../calendar/src/db.json"'
+    );
+  });
 };
 
 startProgram();
