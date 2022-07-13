@@ -122,26 +122,6 @@ const formatDay = (date) => {
   }
 };
 
-// const howManyDaysBetween = (start, end) => {
-//   const weekdays = [
-//     "SONNTAG",
-//     "MONTAG",
-//     "DIENSTAG",
-//     "MITTWOCH",
-//     "DONNERSTAG",
-//     "FREITAG",
-//     "SAMSTAG",
-//   ];
-//   let howManyDays = 0;
-
-//   // There is an infinite loop here when it's sunday = 0
-//   for (let i = start; i !== weekdays.indexOf(end); i++) {
-//     i = i % weekdays.length;
-//     howManyDays++;
-//   }
-//   return howManyDays;
-// };
-
 const howManyDaysBetween = (start, end) => {
   end = end.toUpperCase();
   const weekdays = [
@@ -172,14 +152,12 @@ const howManyDaysBetween = (start, end) => {
 };
 
 /*** Puppeteer ***/
-const startPuppeteer = async (link) => {
+
+const login = async (browser) => {
   // const eventsPage = await askForEventsPage(
   //   "\nHello fellow dancer! \n\nGreat to have you here <3.\nPlease enter an events' page of a facebook group! \n\nIt looks something like this: 'https://www.facebook.com/groups/296668743081/events'! \n"
   // );
-
-  const browser = await puppeteer.launch({ headless: false });
   const page = await browser.newPage();
-
   // Login
   await page.goto(facebook, { waitUntil: "networkidle2" });
   const context = await browser.defaultBrowserContext();
@@ -194,6 +172,10 @@ const startPuppeteer = async (link) => {
   await page.type(passwordInput, process.env.PASS, { delay: 10 });
   await page.click(loginButton);
   await page.waitForNavigation();
+};
+
+const fetchDataFromLink = async (link, browser) => {
+  const page = await browser.newPage();
   await page.goto(link, { waitUntil: "networkidle2" }); // What if user enters wrong address?
 
   // Click on "show more"-button, but only in the "future events"-container
@@ -371,8 +353,6 @@ const startPuppeteer = async (link) => {
     };
   });
 
-  await console.log(`Bis hierhin ist alles okeydokey!`);
-
   // Edge case: Change format of weekdays (e.g. "HEUTE") to ISO date
   eventInfos.events = await eventInfos.events.map((event) => {
     const weekdaysStrings = [
@@ -424,8 +404,6 @@ const startPuppeteer = async (link) => {
     }
   });
 
-  await console.log("Macht er hier auch noch weiter?");
-
   // Filter out duplicates
   eventInfos.events = await eventInfos.events.filter(
     (value, index, self) =>
@@ -438,16 +416,12 @@ const startPuppeteer = async (link) => {
       )
   );
 
-  await console.log("Okaaay, gefiltert wird auch noch?!");
-
   // Bring to correct json-format for json-server
   //eventInfos.events = await { events: [...eventInfos] };
 
   // Create a json file
   let data = await JSON.stringify(eventInfos, null, 2);
   await fs.writeFileSync("lindy-events.json", data);
-
-  await browser.close();
   await console.log("");
   await console.log("Jupiehhh, finished! Have fun dancing!");
 };
@@ -460,10 +434,12 @@ const swingWerkstatt = "https://www.facebook.com/groups/124707970882776/events";
 
 // Refactor? But forEach-Loop does not await
 const startProgram = async () => {
-  // await startPuppeteer(draussenTanzen);
-  await startPuppeteer(swingInHamburg);
-  // await startPuppeteer(swingHH);
-  // await startPuppeteer(swingWerkstatt);
+  const browser = await puppeteer.launch({ headless: false });
+  await login(browser);
+  await fetchDataFromLink(draussenTanzen, browser);
+  await fetchDataFromLink(swingInHamburg, browser);
+  await fetchDataFromLink(swingHH, browser);
+  await fetchDataFromLink(swingWerkstatt, browser);
   await fs.copyFile(
     "lindy-events.json",
     "../calendar/src/lindy-events.json",
@@ -476,33 +452,7 @@ const startProgram = async () => {
       );
     }
   );
+  await browser.close();
 };
 
 startProgram();
-
-// HEUTE UM 19:00
-// HEUTE VON 20:15 BIS 21:30
-// MORGEN UM 19:00
-// FREITAG UM 19:00
-// SONNTAG UM 15:00
-
-// Here seems to be the bug, although for "SAMSTAG VON 16:00 BIS 18:00" it works fine?!
-// https://www.facebook.com/events/487480086315822/?acontext=%7B%22event_action_history%22%3A[%7B%22surface%22%3A%22group%22%7D]%7D
-// https://www.facebook.com/events/1384394638711659/?acontext=%7B%22event_action_history%22%3A[%7B%22surface%22%3A%22group%22%7D]%7D
-// SONNTAG VON 13:00 BIS 15:00
-
-// Abgedeckt
-// 16. SEPT. UM 12:00 – 18. SEPT. UM 22:00
-// 13. AUG. UM 14:00 – 14. AUG. UM 13:30
-// 19. AUG. UM 18:00 – 21. AUG. UM 18:00
-// 14. OKT. UM 19:00 – 16. OKT. UM 17:30
-
-// Abgedeckt
-// FREITAG, 22. JULI 2022 UM 21:00
-// SAMSTAG, 23. JULI 2022 UM 19:00
-// FREITAG, 29. JULI 2022 UM 19:00
-// SAMSTAG, 27. AUGUST 2022 UM 19:00
-// SAMSTAG, 6. AUGUST 2022 UM 18:30
-
-// Abgedeckt
-// FREITAG, 5. AUGUST 2022 VON 18:30 BIS 21:30
