@@ -23,8 +23,8 @@ const facebook = "https://www.facebook.com";
 // Event infos
 let eventInfos = { events: [] };
 
-if (fs.existsSync("lindy-events.json")) {
-  const rawData = fs.readFileSync("lindy-events.json");
+if (fs.existsSync("../calendar/src/lindy-events.json")) {
+  const rawData = fs.readFileSync("../calendar/src/lindy-events.json");
   eventInfos = JSON.parse(rawData);
 }
 
@@ -292,6 +292,7 @@ const startPuppeteer = async (link) => {
     });
 
     await eventInfos.events.push(infos);
+    await console.log(`Hier klappt's noch: ${eventInfos.events}`);
   }
 
   // Change format of date to ISO date
@@ -302,6 +303,8 @@ const startPuppeteer = async (link) => {
       endDate: toISODate(event.endDate),
     };
   });
+
+  await console.log(`Hier auch noch?`);
 
   // Edge case: Change format of weekdays (e.g. "HEUTE") to ISO date
   eventInfos.events = await eventInfos.events.map((event) => {
@@ -315,35 +318,54 @@ const startPuppeteer = async (link) => {
       "SAMSTAG",
     ];
 
-    if (event.startDate === "HEUTE") {
-      return {
-        ...event,
-        startDate: event.scrapingDate,
-        endDate: event.scrapingDate,
-      };
-    } else if (event.startDate === "MORGEN") {
-      let scrapingDate = new Date(event.scrapingDate);
-      let tomorrow = new Date(scrapingDate.setDate(scrapingDate.getDate() + 1));
-      return {
-        ...event,
-        startDate: tomorrow.toISOString().split("T")[0],
-        endDate: tomorrow.toISOString().split("T")[0],
-      };
-    } else if (weekdaysStrings.includes(event.startDate)) {
-      let howManyDays = howManyDaysBetween(event.scrapingDay, event.startDate);
-      let scrapingDate = new Date(event.scrapingDate);
-      let targetDate = new Date(
-        scrapingDate.setDate(scrapingDate.getDate() + howManyDays)
-      );
-      return {
-        ...event,
-        startDate: targetDate.toISOString().split("T")[0],
-        endDate: targetDate.toISOString().split("T")[0],
-      };
-    } else {
-      return event;
+    // Bug seems to be here (somehow an infinite loop)?
+    // Somehow because of "SONNTAG VON 13:00 BIS 15:00"
+
+    console.log(
+      `Das ist das event.startDate: ${event.startDate} und das ist der Titel: ${event.title}`
+    );
+
+    try {
+      if (event.startDate === "HEUTE") {
+        return {
+          ...event,
+          startDate: event.scrapingDate,
+          endDate: event.scrapingDate,
+        };
+      } else if (event.startDate === "MORGEN") {
+        let scrapingDate = new Date(event.scrapingDate);
+        let tomorrow = new Date(
+          scrapingDate.setDate(scrapingDate.getDate() + 1)
+        );
+        return {
+          ...event,
+          startDate: tomorrow.toISOString().split("T")[0],
+          endDate: tomorrow.toISOString().split("T")[0],
+        };
+      } else if (weekdaysStrings.includes(event.startDate)) {
+        let howManyDays = howManyDaysBetween(
+          event.scrapingDay,
+          event.startDate
+        );
+        let scrapingDate = new Date(event.scrapingDate);
+        let targetDate = new Date(
+          scrapingDate.setDate(scrapingDate.getDate() + howManyDays)
+        );
+        return {
+          ...event,
+          startDate: targetDate.toISOString().split("T")[0],
+          endDate: targetDate.toISOString().split("T")[0],
+        };
+        return event;
+      } else {
+        return event;
+      }
+    } catch (error) {
+      console.log(error);
     }
   });
+
+  await console.log("Macht er hier auch noch weiter?");
 
   // Filter out duplicates
   eventInfos.events = await eventInfos.events.filter(
@@ -356,6 +378,8 @@ const startPuppeteer = async (link) => {
           t.title === value.title
       )
   );
+
+  await console.log("Okaaay, gefiltert wird auch noch?!");
 
   // Bring to correct json-format for json-server
   //eventInfos.events = await { events: [...eventInfos] };
@@ -377,18 +401,49 @@ const swingWerkstatt = "https://www.facebook.com/groups/124707970882776/events";
 
 // Refactor? But forEach-Loop does not await
 const startProgram = async () => {
-  await startPuppeteer(draussenTanzen);
+  // await startPuppeteer(draussenTanzen);
   await startPuppeteer(swingInHamburg);
-  await startPuppeteer(swingHH);
-  await startPuppeteer(swingWerkstatt);
-  await fs.copyFile("lindy-events.json", "../calendar/db.json", (error) => {
-    if (error) {
-      throw error;
+  // await startPuppeteer(swingHH);
+  // await startPuppeteer(swingWerkstatt);
+  await fs.copyFile(
+    "lindy-events.json",
+    "../calendar/src/lindy-events.json",
+    (error) => {
+      if (error) {
+        throw error;
+      }
+      console.log(
+        '"lindy-events.json" was copied to this path: "../calendar/src/db.json"'
+      );
     }
-    console.log(
-      '"lindy-events.json" was copied to this path: "../calendar/src/db.json"'
-    );
-  });
+  );
 };
 
 startProgram();
+
+// HEUTE UM 19:00
+// HEUTE VON 20:15 BIS 21:30
+// MORGEN UM 19:00
+// FREITAG UM 19:00
+// SONNTAG UM 15:00
+
+// Here seems to be the bug, although for "SAMSTAG VON 16:00 BIS 18:00" it works fine?!
+// https://www.facebook.com/events/487480086315822/?acontext=%7B%22event_action_history%22%3A[%7B%22surface%22%3A%22group%22%7D]%7D
+// https://www.facebook.com/events/1384394638711659/?acontext=%7B%22event_action_history%22%3A[%7B%22surface%22%3A%22group%22%7D]%7D
+// SONNTAG VON 13:00 BIS 15:00
+
+// Abgedeckt
+// 16. SEPT. UM 12:00 – 18. SEPT. UM 22:00
+// 13. AUG. UM 14:00 – 14. AUG. UM 13:30
+// 19. AUG. UM 18:00 – 21. AUG. UM 18:00
+// 14. OKT. UM 19:00 – 16. OKT. UM 17:30
+
+// Abgedeckt
+// FREITAG, 22. JULI 2022 UM 21:00
+// SAMSTAG, 23. JULI 2022 UM 19:00
+// FREITAG, 29. JULI 2022 UM 19:00
+// SAMSTAG, 27. AUGUST 2022 UM 19:00
+// SAMSTAG, 6. AUGUST 2022 UM 18:30
+
+// Abgedeckt
+// FREITAG, 5. AUGUST 2022 VON 18:30 BIS 21:30
