@@ -122,7 +122,28 @@ const formatDay = (date) => {
   }
 };
 
+// const howManyDaysBetween = (start, end) => {
+//   const weekdays = [
+//     "SONNTAG",
+//     "MONTAG",
+//     "DIENSTAG",
+//     "MITTWOCH",
+//     "DONNERSTAG",
+//     "FREITAG",
+//     "SAMSTAG",
+//   ];
+//   let howManyDays = 0;
+
+//   // There is an infinite loop here when it's sunday = 0
+//   for (let i = start; i !== weekdays.indexOf(end); i++) {
+//     i = i % weekdays.length;
+//     howManyDays++;
+//   }
+//   return howManyDays;
+// };
+
 const howManyDaysBetween = (start, end) => {
+  end = end.toUpperCase();
   const weekdays = [
     "SONNTAG",
     "MONTAG",
@@ -132,13 +153,22 @@ const howManyDaysBetween = (start, end) => {
     "FREITAG",
     "SAMSTAG",
   ];
-  let howManyDays = 0;
 
-  for (let i = start; i !== weekdays.indexOf(end); i++) {
-    i = i % weekdays.length;
-    howManyDays++;
+  const length = weekdays.length;
+  end = weekdays.indexOf(end);
+
+  let numOfDays = 0;
+
+  // If start comes after end, then we can take the difference between the start and the length,
+  // and add that to the end.
+  if (start > end) {
+    numOfDays = length - start + end;
   }
-  return howManyDays;
+  if (start < end) {
+    numOfDays = end - start;
+  }
+
+  return numOfDays;
 };
 
 /*** Puppeteer ***/
@@ -220,45 +250,81 @@ const startPuppeteer = async (link) => {
         myString = myString.toString();
         const data = {};
 
-        // "16. SEPT. UM 12:00 – 18. SEPT. UM 22:00"
-        if (myString.includes("–")) {
-          data.day = null;
-          data.startDate = myString.substring(0, myString.indexOf("UM")).trim();
-          data.startTime = myString
-            .substring(myString.indexOf("UM") + 2, myString.indexOf("–"))
-            .trim();
-          let pos1 = myString.indexOf("UM");
-          let pos2 = myString.indexOf("UM", pos1 + 2);
-          data.endDate = myString
-            .substring(myString.indexOf("–") + 1, pos2)
-            .trim();
-          data.endTime = myString.substring(pos2 + 2).trim();
-        } // "MONTAG, 20. JUNI 2022 UM 19:00"
-        else if (myString.includes("UM")) {
-          data.day = myString.substring(0, myString.indexOf(","));
-          data.startDate = myString
-            .substring(myString.indexOf(",") + 1, myString.indexOf("UM"))
-            .trim();
-          data.startTime = myString
-            .substring(myString.indexOf("UM") + 2)
-            .trim();
-          data.endDate = myString
-            .substring(myString.indexOf(",") + 1, myString.indexOf("UM"))
-            .trim();
-          data.endTime = null;
-        } // "SONNTAG, 19. JUNI 2022 VON 13:00 BIS 15:00"
-        else {
-          data.day = myString.substring(0, myString.indexOf(","));
-          data.startDate = myString
-            .substring(myString.indexOf(",") + 1, myString.indexOf("VON"))
-            .trim();
-          data.startTime = myString
-            .substring(myString.indexOf("VON") + 3, myString.indexOf("BIS"))
-            .trim();
-          data.endDate = myString
-            .substring(myString.indexOf(",") + 1, myString.indexOf("VON"))
-            .trim();
-          data.endTime = myString.substring(myString.indexOf("BIS") + 3).trim();
+        try {
+          // "16. SEPT. UM 12:00 – 18. SEPT. UM 22:00"
+          if (myString.includes("–")) {
+            data.day = null;
+            data.startDate = myString
+              .substring(0, myString.indexOf("UM"))
+              .trim();
+            data.startTime = myString
+              .substring(myString.indexOf("UM") + 2, myString.indexOf("–"))
+              .trim();
+            let pos1 = myString.indexOf("UM");
+            let pos2 = myString.indexOf("UM", pos1 + 2);
+            data.endDate = myString
+              .substring(myString.indexOf("–") + 1, pos2)
+              .trim();
+            data.endTime = myString.substring(pos2 + 2).trim();
+          } // "MONTAG, 20. JUNI 2022 UM 19:00"
+          else if (myString.includes("UM") && myString.includes(",")) {
+            data.day = myString.substring(0, myString.indexOf(","));
+            data.startDate = myString
+              .substring(myString.indexOf(",") + 1, myString.indexOf("UM"))
+              .trim();
+            data.startTime = myString
+              .substring(myString.indexOf("UM") + 2)
+              .trim();
+            data.endDate = myString
+              .substring(myString.indexOf(",") + 1, myString.indexOf("UM"))
+              .trim();
+            data.endTime = null;
+          } // "SONNTAG, 19. JUNI 2022 VON 13:00 BIS 15:00"
+          else if (myString.includes(",") && myString.includes("VON")) {
+            data.day = myString.substring(0, myString.indexOf(","));
+            data.startDate = myString
+              .substring(myString.indexOf(",") + 1, myString.indexOf("VON"))
+              .trim();
+            data.startTime = myString
+              .substring(myString.indexOf("VON") + 3, myString.indexOf("BIS"))
+              .trim();
+            data.endDate = myString
+              .substring(myString.indexOf(",") + 1, myString.indexOf("VON"))
+              .trim();
+            data.endTime = myString
+              .substring(myString.indexOf("BIS") + 3)
+              .trim();
+          } // "HEUTE VON 20:15 BIS 21:30"
+          else if (
+            myString.includes("VON") &&
+            myString.includes("BIS") &&
+            !myString.includes(",")
+          ) {
+            data.day = myString.substring(0, myString.indexOf("VON")).trim();
+            data.startDate = myString
+              .substring(0, myString.indexOf("VON"))
+              .trim();
+            data.startTime = myString
+              .substring(myString.indexOf("VON") + 3, myString.indexOf("BIS"))
+              .trim();
+            data.endDate = myString
+              .substring(0, myString.indexOf("VON"))
+              .trim();
+            data.endTime = myString
+              .substring(myString.indexOf("BIS") + 3)
+              .trim();
+          } // MORGEN UM 19:00
+          else {
+            data.day = myString.substring(0, myString.indexOf("UM")).trim();
+            data.startDate = data.day;
+            data.startTime = myString
+              .substring(myString.indexOf("UM") + 2)
+              .trim();
+            data.endDate = data.day;
+            data.endTime = null;
+          }
+        } catch (error) {
+          console.log(error);
         }
 
         return data;
@@ -272,7 +338,9 @@ const startPuppeteer = async (link) => {
       const nodesInfo = await [...document.querySelectorAll(infoBoxSelector)];
 
       let infoObject = {};
-      const formattedDate = formatDate(nodesInfo[0].children[0].innerText);
+      const formattedDate = await formatDate(
+        nodesInfo[0].children[0].innerText
+      );
 
       infoObject.id = crypto.randomUUID();
       infoObject.originalDateString = nodesInfo[0].children[0].innerText;
@@ -292,7 +360,6 @@ const startPuppeteer = async (link) => {
     });
 
     await eventInfos.events.push(infos);
-    await console.log(`Hier klappt's noch: ${eventInfos.events}`);
   }
 
   // Change format of date to ISO date
@@ -304,7 +371,7 @@ const startPuppeteer = async (link) => {
     };
   });
 
-  await console.log(`Hier auch noch?`);
+  await console.log(`Bis hierhin ist alles okeydokey!`);
 
   // Edge case: Change format of weekdays (e.g. "HEUTE") to ISO date
   eventInfos.events = await eventInfos.events.map((event) => {
@@ -317,13 +384,6 @@ const startPuppeteer = async (link) => {
       "FREITAG",
       "SAMSTAG",
     ];
-
-    // Bug seems to be here (somehow an infinite loop)?
-    // Somehow because of "SONNTAG VON 13:00 BIS 15:00"
-
-    console.log(
-      `Das ist das event.startDate: ${event.startDate} und das ist der Titel: ${event.title}`
-    );
 
     try {
       if (event.startDate === "HEUTE") {
@@ -356,7 +416,6 @@ const startPuppeteer = async (link) => {
           startDate: targetDate.toISOString().split("T")[0],
           endDate: targetDate.toISOString().split("T")[0],
         };
-        return event;
       } else {
         return event;
       }
